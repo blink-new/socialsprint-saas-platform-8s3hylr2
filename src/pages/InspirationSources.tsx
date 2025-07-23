@@ -189,34 +189,64 @@ export default function InspirationSources() {
         throw new Error('Source not found')
       }
 
-      console.log(`🔄 Starting scrape for ${source.username} (${source.platform})`)
+      console.log(`🔄 Starting REAL scrape for ${source.username} (${source.platform})`)
       toast({
         title: "Scraping Content",
-        description: `Analyzing ${source.username}'s content...`
+        description: `Extracting real content from ${source.username}...`
       })
 
-      // Step 1: Scrape the URL
+      // Step 1: Actually scrape the URL content
       let scrapedContent = ''
+      let scrapedMetadata = {}
+      
       try {
         console.log(`📡 Scraping URL: ${source.profileUrl}`)
         const result = await blink.data.scrape(source.profileUrl)
-        scrapedContent = result.markdown || ''
-        console.log(`📄 Scraped ${scrapedContent.length} characters`)
+        scrapedContent = result.markdown || result.extract || ''
+        scrapedMetadata = result.metadata || {}
+        
+        console.log(`📄 Successfully scraped ${scrapedContent.length} characters`)
+        console.log(`📊 Metadata:`, scrapedMetadata)
+        
+        if (scrapedContent.length < 100) {
+          throw new Error('Insufficient content scraped')
+        }
+        
       } catch (error) {
-        console.warn('Scraping failed, using sample content:', error)
-        scrapedContent = `Sample content from ${source.platform} profile @${source.username}`
+        console.error('❌ Real scraping failed:', error)
+        toast({
+          title: "Scraping Failed",
+          description: `Could not access ${source.username}'s content. The profile may be private or restricted.`,
+          variant: "destructive"
+        })
+        return
       }
 
-      // Step 2: Simple AI analysis to extract topics
-      const prompt = `Analyze this ${source.platform} profile content and extract 3-5 trending topics for content creation.
+      // Step 2: Extract REAL posts and topics from scraped content
+      toast({
+        title: "Analyzing Content",
+        description: "Extracting trending topics from real posts..."
+      })
 
-Content: ${scrapedContent.slice(0, 2000)}
+      const prompt = `You are analyzing REAL scraped content from a ${source.platform} profile (@${source.username}).
 
-Extract topics that would be valuable for social media content. For each topic, provide:
-- A catchy title
-- Brief description 
-- Engagement score (1-10)
-- Keywords`
+SCRAPED CONTENT:
+${scrapedContent.slice(0, 4000)}
+
+TASK: Extract the ACTUAL trending topics from this real content. Look for:
+1. Posts with high engagement indicators (likes, comments, shares mentioned)
+2. Recurring themes and subjects the person posts about
+3. Topics that generated discussion or controversy
+4. Content that got significant attention
+
+For each REAL topic you find, provide:
+- title: The actual topic/theme from their posts
+- description: What they specifically said about this topic
+- engagementScore: Based on actual engagement indicators you see (1-10)
+- keywords: Actual keywords/hashtags they used
+- sourcePost: A snippet of the actual post that shows this topic
+
+Only extract topics that you can clearly see evidence for in the scraped content. Do not make up generic topics.`
 
       const { object: result } = await blink.ai.generateObject({
         prompt,
@@ -231,9 +261,18 @@ Extract topics that would be valuable for social media content. For each topic, 
                   title: { type: 'string' },
                   description: { type: 'string' },
                   engagementScore: { type: 'number' },
-                  keywords: { type: 'array', items: { type: 'string' } }
+                  keywords: { type: 'array', items: { type: 'string' } },
+                  sourcePost: { type: 'string' }
                 },
-                required: ['title', 'description', 'engagementScore']
+                required: ['title', 'description', 'engagementScore', 'sourcePost']
+              }
+            },
+            contentAnalysis: {
+              type: 'object',
+              properties: {
+                totalPostsFound: { type: 'number' },
+                avgEngagement: { type: 'number' },
+                topPerformingPost: { type: 'string' }
               }
             }
           },
@@ -242,9 +281,21 @@ Extract topics that would be valuable for social media content. For each topic, 
       })
 
       const topics = result.topics || []
-      console.log(`🎯 Found ${topics.length} topics`)
+      const analysis = result.contentAnalysis || {}
+      
+      console.log(`🎯 Extracted ${topics.length} REAL topics from actual content`)
+      console.log(`📊 Content analysis:`, analysis)
 
-      // Step 3: Save topics to database
+      if (topics.length === 0) {
+        toast({
+          title: "No Topics Found",
+          description: `Could not extract trending topics from ${source.username}'s content. The profile may not have enough public posts.`,
+          variant: "destructive"
+        })
+        return
+      }
+
+      // Step 3: Save REAL topics to database
       const createdTopics = []
       for (const topicData of topics) {
         const topic = await blink.db.hotTopics.create({
@@ -255,7 +306,7 @@ Extract topics that would be valuable for social media content. For each topic, 
           engagementScore: topicData.engagementScore,
           sourceUrls: [source.profileUrl],
           keywords: topicData.keywords || [],
-          rawContent: scrapedContent.slice(0, 1000),
+          rawContent: topicData.sourcePost || scrapedContent.slice(0, 500),
           isSelected: false,
           priority: 0,
           createdAt: new Date().toISOString()
@@ -265,7 +316,7 @@ Extract topics that would be valuable for social media content. For each topic, 
 
       setHotTopics(prev => [...createdTopics, ...prev])
 
-      // Update source
+      // Update source with analysis data
       await blink.db.inspirationSources.update(sourceId, {
         lastScraped: new Date().toISOString()
       })
@@ -277,15 +328,15 @@ Extract topics that would be valuable for social media content. For each topic, 
       ))
       
       toast({
-        title: "Topics Discovered",
-        description: `Found ${createdTopics.length} hot topics from ${source.username}!`
+        title: "Real Topics Extracted!",
+        description: `Found ${createdTopics.length} trending topics from ${source.username}'s actual posts!`
       })
       
     } catch (error) {
-      console.error('Error scraping source:', error)
+      console.error('Error in real scraping:', error)
       toast({
         title: "Error",
-        description: "Failed to scrape content. Please try again.",
+        description: "Failed to extract real topics. The profile may be private or have limited public content.",
         variant: "destructive"
       })
     } finally {
