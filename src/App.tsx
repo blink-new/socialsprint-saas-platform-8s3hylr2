@@ -10,6 +10,7 @@ import InspirationSources from '@/pages/InspirationSources'
 import Settings from '@/pages/Settings'
 import Team from '@/pages/Team'
 import Billing from '@/pages/Billing'
+import ScrapeTest from '@/pages/ScrapeTest'
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
             <Route path="team" element={<Team />} />
             <Route path="settings" element={<Settings />} />
             <Route path="billing" element={<Billing />} />
+            <Route path="scrape-test" element={<ScrapeTest />} />
           </Route>
         </Routes>
         <Toaster />
