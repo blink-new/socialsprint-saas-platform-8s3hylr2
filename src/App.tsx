@@ -11,6 +11,7 @@ import Settings from '@/pages/Settings'
 import Team from '@/pages/Team'
 import Billing from '@/pages/Billing'
 import ScrapeTest from '@/pages/ScrapeTest'
+import ScrapingDebug from '@/pages/ScrapingDebug'
 
 function App() {
   return (
@@ -29,6 +30,7 @@ function App() {
             <Route path="settings" element={<Settings />} />
             <Route path="billing" element={<Billing />} />
             <Route path="scrape-test" element={<ScrapeTest />} />
+            <Route path="scraping-debug" element={<ScrapingDebug />} />
           </Route>
         </Routes>
         <Toaster />
