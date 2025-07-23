@@ -29,10 +29,11 @@ export default function ScrapeTest() {
         data: scrapedData,
         contentLength: scrapedData.markdown?.length || 0,
         title: scrapedData.metadata?.title || 'No title found',
-        description: scrapedData.metadata?.description || 'No description found'
+        description: scrapedData.metadata?.description || 'No description found',
+        url: url
       })
       
-      toast.success('Scraping successful!')
+      toast.success(`Scraping successful! Got ${scrapedData.markdown?.length || 0} characters`)
       
     } catch (error: any) {
       console.error('❌ Scrape failed:', error)
@@ -40,7 +41,44 @@ export default function ScrapeTest() {
       setResult({
         success: false,
         error: error.message || 'Unknown error',
-        details: error
+        details: error,
+        url: url
+      })
+      
+      toast.error(`Scraping failed: ${error.message}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const testPresetUrl = async (presetUrl: string) => {
+    setUrl(presetUrl)
+    setLoading(true)
+    try {
+      console.log('🔄 Testing preset URL:', presetUrl)
+      
+      const scrapedData = await blink.data.scrape(presetUrl)
+      console.log('✅ Scrape successful:', scrapedData)
+      
+      setResult({
+        success: true,
+        data: scrapedData,
+        contentLength: scrapedData.markdown?.length || 0,
+        title: scrapedData.metadata?.title || 'No title found',
+        description: scrapedData.metadata?.description || 'No description found',
+        url: presetUrl
+      })
+      
+      toast.success(`Scraping successful! Got ${scrapedData.markdown?.length || 0} characters`)
+      
+    } catch (error: any) {
+      console.error('❌ Scrape failed:', error)
+      
+      setResult({
+        success: false,
+        error: error.message || 'Unknown error',
+        details: error,
+        url: presetUrl
       })
       
       toast.error(`Scraping failed: ${error.message}`)
@@ -71,14 +109,64 @@ export default function ScrapeTest() {
             </Button>
           </div>
           
-          <div className="text-sm text-gray-600">
-            <p><strong>Try these URLs:</strong></p>
-            <ul className="list-disc list-inside space-y-1 mt-2">
-              <li><code>https://blog.vercel.com/</code> - Public blog</li>
-              <li><code>https://github.com/vercel/next.js</code> - GitHub repo</li>
-              <li><code>https://news.ycombinator.com/</code> - Hacker News</li>
-              <li><code>https://www.linkedin.com/pulse/</code> - LinkedIn articles (public)</li>
-            </ul>
+          <div className="space-y-3">
+            <p className="text-sm font-medium">Quick Test URLs:</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => testPresetUrl('https://blog.vercel.com/')}
+                disabled={loading}
+                className="justify-start text-xs"
+              >
+                🌐 Vercel Blog (Should Work)
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => testPresetUrl('https://github.com/vercel/next.js')}
+                disabled={loading}
+                className="justify-start text-xs"
+              >
+                📁 GitHub Repo (Should Work)
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => testPresetUrl('https://news.ycombinator.com/')}
+                disabled={loading}
+                className="justify-start text-xs"
+              >
+                📰 Hacker News (Should Work)
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => testPresetUrl('https://www.linkedin.com/in/satyanadella/')}
+                disabled={loading}
+                className="justify-start text-xs"
+              >
+                💼 LinkedIn Profile (May Fail)
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => testPresetUrl('https://twitter.com/elonmusk')}
+                disabled={loading}
+                className="justify-start text-xs"
+              >
+                🐦 Twitter Profile (Will Fail)
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => testPresetUrl('https://medium.com/@dhh')}
+                disabled={loading}
+                className="justify-start text-xs"
+              >
+                📝 Medium Profile (May Work)
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -89,6 +177,9 @@ export default function ScrapeTest() {
             <CardTitle className={result.success ? 'text-green-600' : 'text-red-600'}>
               {result.success ? '✅ Scraping Successful' : '❌ Scraping Failed'}
             </CardTitle>
+            <p className="text-sm text-gray-600">
+              <strong>URL:</strong> {result.url}
+            </p>
           </CardHeader>
           <CardContent className="space-y-4">
             {result.success ? (
